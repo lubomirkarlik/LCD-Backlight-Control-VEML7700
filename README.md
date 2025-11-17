@@ -1,4 +1,4 @@
-# LCD Backlight Auto-Control for Volumio or other embeded systems.
+# LCD Backlight Auto-Control for Volumio or other similar embedded systems.
 
 Automatic brightness control for 7" DPI LCD display using VEML7700 light sensor on Raspberry Pi 3B+ with Volumio.
 
@@ -44,10 +44,9 @@ Automatic brightness control for 7" DPI LCD display using VEML7700 light sensor 
 
 ## 💿 Software Requirements
 
-- **OS**: Volumio 3.832 (2025-07-26-pi) or later
+- **OS**: Linux based system as is Raspi, Armbian, VolumioOS...
 - **Python**: 3.x
 - **Python Libraries**:
-  - `adafruit-circuitpython-veml7700`
   - `RPi.GPIO`
   - `smbus`
   - `schedule`
@@ -491,7 +490,7 @@ This project is open-source and available under the MIT License.
 
 ## 👤 Author
 
-**volumio@volumiorpi**
+**lubomirkarlik60@gmail.com**
 
 ## 📅 Changelog
 
