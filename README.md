@@ -1,730 +1,517 @@
-# \# LCD Backlight Auto-Control for Volumio3 or other embedded system .
+# LCD Backlight Auto-Control for Volumio or other embeded systems.
+
+Automatic brightness control for 7" DPI LCD display using VEML7700 light sensor on Raspberry Pi 3B+ with Volumio.
+
+![GitHub](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python](https://img.shields.io/badge/python-3.x-blue.svg)
+![Raspberry Pi](https://img.shields.io/badge/platform-Raspberry%20Pi%203B%2B-red.svg)
+
+## 📋 Table of Contents
+
+- [Features](#features)
+- [Hardware Components](#hardware-components)
+- [Software Requirements](#software-requirements)
+- [Wiring Diagram](#wiring-diagram)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
-# 
+## ✨ Features
 
-# Automatic brightness control for 7" DSI LCD display using VEML7700 light sensor on Raspberry Pi 3B+ .
+- 🌞 **Automatic brightness adjustment** based on ambient light
+- 📈 **Logarithmic brightness curve** for natural perception
+- 🎚️ **Smooth transitions** to prevent flickering
+- ⚙️ **Configurable parameters** via external files
+- 🔄 **Auto-start** at boot via systemd service
+- 📊 **Real-time monitoring** with detailed logging
 
-# 
+## 🔧 Hardware Components
 
-# \## 📋 Table of Contents
+| Component | Model/Type | Description |
+|-----------|------------|-------------|
+| **Main Unit** | Raspberry Pi 3B+ | Control unit |
+| **Display** | 7" LCD DPI (OFI009) | Touch display connected via DPI interface |
+| **Audio** | HiFiBerry AMP2 | Amplifier for speakers |
+| **Enclosure** | Gainta G17083UBK | Protective case |
+| **24V Power Supply** | ZDR1231 | Power supply for amplifier |
+| **5.1V Power Supply** | ZDR577 (adjustable) | Main power supply for RPi |
+| **Encoder** | KY-040 | Rotary encoder for volume control |
+| **Light Sensor** | VEML7700 (BH-014PA) | 16-bit I2C ambient light sensor |
+| **Speaker Connector** | VG09103 | Output connector |
+| **Power Connector** | KAB2423 | With switch and fuse |
+
+## 💿 Software Requirements
+
+- **OS**: Volumio 3.832 (2025-07-26-pi) or later
+- **Python**: 3.x
+- **Python Libraries**:
+  - `adafruit-circuitpython-veml7700`
+  - `RPi.GPIO`
+  - `smbus`
+  - `schedule`
 
-# 
+## 🔌 Wiring Diagram
 
-# \- \[Hardware Components](#hardware-components)
+### I2C Bus (VEML7700 Sensor)
+
+```
+Raspberry Pi 3B+          VEML7700 (WL7700)
+─────────────────         ──────────────────
+Pin 1  (3.3V)    ──────── Pin 5 (+3.3V)
+Pin 3  (GPIO 2)  ──────── Pin 2 (SDA)
+Pin 5  (GPIO 3)  ──────── Pin 1 (SCL)
+Pin 6  (GND)     ──────── Pin 4 (GND)
+```
 
-# \- \[Software](#software)
+### GPIO Pinout Reference
 
-# \- \[Wiring Diagram](#wiring-diagram)
+```
++-----+-----+---------+------+---+---Pi 3B+-+---+------+---------+-----+-----+
+| BCM | wPi |   Name  | Mode | V | Physical | V | Mode | Name    | wPi | BCM |
++-----+-----+---------+------+---+----++----+---+------+---------+-----+-----+
+|     |     |    3.3v |      |   |  1 || 2  |   |      | 5v      |     |     |
+|   2 |   8 |   SDA.1 | ALT0 | 1 |  3 || 4  |   |      | 5v      |     |     |
+|   3 |   9 |   SCL.1 | ALT0 | 1 |  5 || 6  |   |      | 0v      |     |     |
+|   4 |   7 | GPIO. 7 |   IN | 1 |  7 || 8  | 1 | IN   | TxD     |  15 |  14 |
++-----+-----+---------+------+---+----++----+---+------+---------+-----+-----+
+```
 
-# \- \[Installation](#installation)
+### Rotary Encoder (KY-040)
 
-# \- \[Configuration](#configuration)
+- **CLK**: GPIO pin (BCM numbering from `gpio readall`)
+- **DT**: GPIO pin (BCM numbering)
+- **SW**: GPIO pin (button)
+- **+**: 3.3V
+- **GND**: Ground
 
-# \- \[Usage](#usage)
+> **Note**: Configure encoder pins in Volumio's Rotary Encoder plugin using **BCM** pin numbers.
 
-# \- \[Troubleshooting](#troubleshooting)
+### Display Connection
 
-# 
+- **Power**: +5V and GND from connector X1
+- **DPI Signals**: Connected according to `/boot/config.txt` DPI configuration
 
-# \## 🔧 Hardware Components
+## 📦 Installation
 
-# 
+### Step 1: Prepare SD Card
 
-# | Component | Model/Type | Description |
+Use **Balena Etcher** to flash Volumio image:
 
-# |-----------|------------|-------------|
+```bash
+Volumio-3.832-2025-07-26-pi.zip
+```
 
-# | \*\*Main Unit\*\* | Raspberry Pi 3B+ | Control unit |
+### Step 2: Configure APT Repository
 
-# | \*\*Display\*\* | 7" LCD DPI (OFI009) | Touch display connected via DPI interface |
+After first boot, edit APT sources:
 
-# | \*\*Audio\*\* | HiFiBerry AMP2 | Amplifier for speakers |
+```bash
+sudo nano /etc/apt/sources.list
+```
 
-# | \*\*Enclosure\*\* | Gainta G17083UBK | Protective case |
+Replace content with:
 
-# | \*\*24V Power Supply\*\* | ZDR1231 | Power supply for amplifier |
+```
+deb http://archive.raspbian.org/raspbian/ buster main contrib non-free rpi
+```
 
-# | \*\*5.1V Power Supply\*\* | ZDR577 (adjustable) | Main power supply for RPi |
+### Step 3: Basic Volumio Setup
 
-# | \*\*Encoder\*\* | KY-040 | Rotary encoder for volume control |
+1. Complete Volumio web interface setup
+2. Install plugins:
+   - **Touch Display** (disable Sleep Mode)
+   - **Now Playing**
+   - **Rotary Encoder** (configure with BCM pin numbers)
+3. Enable SSH: `http://volumio.local/dev`
 
-# | \*\*Light Sensor\*\* | VEML7700 (BH-014PA) | 16-bit I2C ambient light sensor |
+### Step 4: Install System Dependencies
 
-# | \*\*Speaker Connector\*\* | VG09103 | Output connector |
+```bash
+sudo apt update
+sudo apt upgrade
+sudo apt install python3-pip i2c-tools
+```
 
-# | \*\*Power Connector\*\* | KAB2423 | With switch and fuse |
+### Step 5: Install Python Libraries
 
-# 
+```bash
+sudo pip3 install adafruit-circuitpython-veml7700
+sudo pip3 install RPi.GPIO
+sudo pip3 install smbus
+sudo pip3 install schedule
+```
 
-# \## 💿 Software
+### Step 6: Verify I2C Sensor
 
-# 
+```bash
+i2cdetect -y 1
+```
 
-# \- \*\*OS\*\*: Linux type OS as is Raspbian, Volumio OS ...
+Expected output (sensor at address 0x10):
 
-# \- \*\*Programming Language\*\*: Python 3
+```
+     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:          -- -- -- -- -- -- -- -- -- -- -- -- -- 
+10: 10 -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+```
 
-# \- \*\*Libraries\*\*:
+### Step 7: Create Python Script
 
-# &nbsp; - `RPi.GPIO`
+Create `/home/volumio/backlight_control.py`:
 
-# &nbsp; - `smbus`
+```bash
+nano /home/volumio/backlight_control.py
+```
 
-# &nbsp; - `schedule`
+Paste the script content (see `backlight_control.py` in this repository).
 
-# 
+Set permissions:
 
-# \## 🔌 Wiring Diagram
+```bash
+chmod +x /home/volumio/backlight_control.py
+```
 
-# 
+### Step 8: Create Systemd Service
 
-# \### Component Connections to Raspberry Pi 3B+
+```bash
+sudo nano /etc/systemd/system/backlight.service
+```
 
-# 
+Content:
 
-# \#### I2C Bus (VEML7700 sensor):
+```ini
+[Unit]
+Description=Backlight Control Service
+After=multi-user.target
 
-# \- \*\*SDA\*\*: GPIO 2 (Physical pin 3, BCM 2) → WL7700 pin 2
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/volumio/backlight_control.py
+WorkingDirectory=/home/volumio
+User=volumio
+Group=volumio
+Restart=always
+RestartSec=5
 
-# \- \*\*SCL\*\*: GPIO 3 (Physical pin 5, BCM 3) → WL7700 pin 1
+[Install]
+WantedBy=multi-user.target
+```
 
-# \- \*\*3.3V\*\*: Pin 1 → WL7700 pin 5
+### Step 9: Enable and Start Service
 
-# \- \*\*GND\*\*: Pin 6 → WL7700 pin 4
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable backlight.service
+sudo systemctl start backlight.service
+```
 
-# 
+### Step 10: Verify Service Status
 
-# \#### 7" Display:
+```bash
+sudo systemctl status backlight.service
+```
 
-# \- \*\*Power\*\*: +5V and GND from X1 connector
+Monitor logs in real-time:
 
-# \- \*\*DPI Signals\*\*: Connected according to DPI configuration in `/boot/config.txt`
+```bash
+sudo journalctl -u backlight.service -f
+```
 
-# 
+## ⚙️ Configuration
 
-# > \*\*Note\*\*: Pin numbers in Rotary Encoder plugin use \*\*BCM\*\* numbering from the `gpio readall` table.
+### Configuration Files Location
 
-# 
+Create configuration directory:
 
-# \### GPIO Pinout Reference
+```bash
+sudo mkdir -p /etc/lcd_backlight
+```
 
-# 
+### Available Configuration Parameters
 
-# ```
+#### Minimum Brightness (0-255)
 
-# +-----+-----+---------+------+---+---Pi 3B+-+---+------+---------+-----+-----+
+```bash
+echo "12" | sudo tee /etc/lcd_backlight/lcd_min_backlight
+```
 
-# | BCM | wPi |   Name  | Mode | V | Physical | V | Mode | Name    | wPi | BCM |
+#### Maximum Brightness (0-255)
 
-# +-----+-----+---------+------+---+----++----+---+------+---------+-----+-----+
+```bash
+echo "255" | sudo tee /etc/lcd_backlight/lcd_max_backlight
+```
 
-# |     |     |    3.3v |      |   |  1 || 2  |   |      | 5v      |     |     |
+#### Measurement Interval (seconds)
 
-# |   2 |   8 |   SDA.1 | ALT0 | 1 |  3 || 4  |   |      | 5v      |     |     |
+```bash
+echo "1" | sudo tee /etc/lcd_backlight/lcd_int_time
+```
 
-# |   3 |   9 |   SCL.1 | ALT0 | 1 |  5 || 6  |   |      | 0v      |     |     |
+#### Lux Multiplier (calibration)
 
-# |   4 |   7 | GPIO. 7 |   IN | 1 |  7 || 8  | 1 | IN   | TxD     |  15 |  14 |
+```bash
+echo "0.75" | sudo tee /etc/lcd_backlight/lcd_lux_multiplier
+```
 
-# ```
+#### Smoothing Factor (0.0-1.0)
 
-# 
+Lower values = smoother transitions
 
-# \## 📦 Installation
+```bash
+echo "0.3" | sudo tee /etc/lcd_backlight/lcd_smoothing_factor
+```
 
-# 
+### Apply Configuration Changes
 
-# \### 1. SD Card Preparation
+```bash
+sudo systemctl restart backlight.service
+```
 
-# 
+### Default Values
 
-# Use \*\*Balena Etcher\*\* to install the OS image (in my case Volumio OS) to SD card:
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `MIN_BACKLIGHT` | 12 | Minimum brightness (dark) |
+| `MAX_BACKLIGHT` | 255 | Maximum brightness (bright) |
+| `INT_TIME` | 1 | Measurement interval (sec) |
+| `LUX_MULTIPLIER` | 0.75 | Lux calibration coefficient |
+| `SMOOTHING_FACTOR` | 0.3 | Transition smoothing |
 
-# 
+## 🎯 Usage
 
-# ```bash
+### Automatic Operation
 
-# \# Downloaded image
+The service starts automatically at boot and runs continuously.
 
-# Volumio-3.832-2025-07-26-pi.zip
+### Manual Service Control
 
-# ```
+```bash
+# Check status
+sudo systemctl status backlight.service
 
-# 
+# Stop service
+sudo systemctl stop backlight.service
 
-# \### 2. First Boot and APT Repository Configuration
+# Start service
+sudo systemctl start backlight.service
 
-# 
+# Restart service
+sudo systemctl restart backlight.service
 
-# After first boot, edit `/etc/apt/sources.list`:
+# Disable auto-start
+sudo systemctl disable backlight.service
 
-# 
+# Enable auto-start
+sudo systemctl enable backlight.service
+```
 
-# ```bash
+### View Logs
 
-# sudo nano /etc/apt/sources.list
+```bash
+# Last 50 entries
+sudo journalctl -u backlight.service -n 50
 
-# ```
+# Follow in real-time
+sudo journalctl -u backlight.service -f
 
-# 
+# Today's logs only
+sudo journalctl -u backlight.service --since today
+```
 
-# Change content to:
+### Log Output Example
 
-# 
+```
+[12:34:56] Lux:  245.3 | Brightness: 145/255
+[12:34:57] Lux:  248.1 | Brightness: 147/255
+[12:34:58] Lux:  251.7 | Brightness: 149/255
+```
 
-# ```
+## 🔍 Troubleshooting
 
-# deb http://archive.raspbian.org/raspbian/ buster main contrib non-free rpi
+### Sensor Not Detected
 
-# ```
+**Check I2C bus:**
 
-# 
+```bash
+i2cdetect -y 1
+```
 
-# \### 3. Basic Volumio Configuration
+**Enable I2C interface:**
 
-# 
+```bash
+sudo nano /boot/config.txt
+# Add or uncomment:
+dtparam=i2c_arm=on
+```
 
-# 1\. Complete basic Volumio setup via web interface
+Reboot after changes.
 
-# 2\. Install \*\*Touch Display\*\* plugin
+### Service Fails to Start
 
-# 3\. Install \*\*Now Playing\*\* plugin
+**Check service logs:**
 
-# 4\. Enable SSH access via `http://volumio.local/dev`
+```bash
+sudo journalctl -u backlight.service -n 50 --no-pager
+```
 
-# 
+**Verify Python dependencies:**
 
-# \### 4. Plugin Configuration
+```bash
+python3 -c "import adafruit_veml7700; print('VEML7700: OK')"
+python3 -c "import RPi.GPIO; print('GPIO: OK')"
+python3 -c "import smbus; print('SMBus: OK')"
+```
 
-# 
+**Check script syntax:**
 
-# \#### Touch Display plugin:
+```bash
+python3 -m py_compile /home/volumio/backlight_control.py
+```
 
-# \- \*\*Disable Sleep Mode\*\* (to prevent automatic screen dimming)
+### Display Doesn't Change Brightness
 
-# 
+**Verify backlight device exists:**
 
-# \#### Rotary Encoder plugin:
+```bash
+ls -la /sys/class/backlight/*/brightness
+```
 
-# \- Enter pin numbers in \*\*BCM format\*\* (from `gpio readall` table)
+**Test manual brightness control:**
 
-# \- Configure GPIO pins according to your encoder wiring
+```bash
+echo 128 | sudo tee /sys/class/backlight/*/brightness
+echo 255 | sudo tee /sys/class/backlight/*/brightness
+```
 
-# 
+**Check file permissions:**
 
-# \### 5. Dependencies Installation
+```bash
+ls -la /home/volumio/backlight_control.py
+# Should be: -rwxr-xr-x (executable)
+```
 
-# 
+### Brightness Too Sensitive
 
-# Connect via SSH and install required packages:
+Increase smoothing factor:
 
-# 
+```bash
+echo "0.5" | sudo tee /etc/lcd_backlight/lcd_smoothing_factor
+sudo systemctl restart backlight.service
+```
 
-# ```bash
+### Display Too Dark/Bright
 
-# sudo apt update
+**Adjust minimum brightness:**
 
-# sudo apt upgrade
+```bash
+echo "5" | sudo tee /etc/lcd_backlight/lcd_min_backlight
+```
 
-# sudo apt install python3-pip i2c-tools
+**Adjust maximum brightness:**
 
-# 
+```bash
+echo "200" | sudo tee /etc/lcd_backlight/lcd_max_backlight
+```
 
-# sudo pip3 install adafruit-circuitpython-veml7700
+**Apply changes:**
 
-# sudo pip3 install RPi.GPIO
+```bash
+sudo systemctl restart backlight.service
+```
 
-# sudo pip3 install smbus
+### Sensor Readings Seem Wrong
 
-# sudo pip3 install schedule
+Calibrate lux multiplier:
 
-# ```
+```bash
+# For higher sensitivity
+echo "1.0" | sudo tee /etc/lcd_backlight/lcd_lux_multiplier
 
-# 
+# For lower sensitivity
+echo "0.5" | sudo tee /etc/lcd_backlight/lcd_lux_multiplier
 
-# \### 6. I2C Sensor Verification
+sudo systemctl restart backlight.service
+```
 
-# 
+## 📊 Monitoring
 
-# Check if VEML7700 sensor is detected:
+### Real-Time Monitoring
 
-# 
+```bash
+# Watch brightness changes
+sudo journalctl -u backlight.service -f
+```
 
-# ```bash
+### Performance Statistics
 
-# i2cdetect -y 1
+```bash
+# Service uptime and status
+sudo systemctl status backlight.service
 
-# ```
+# Recent logs with timestamps
+sudo journalctl -u backlight.service -n 100 --no-pager
+```
 
-# 
+## 🛠️ Advanced Configuration
 
-# Output should display address `10` (0x10):
+### Custom Brightness Curve
 
-# 
+Edit `/home/volumio/backlight_control.py` and modify the `_lux_to_brightness()` method to implement custom brightness curves.
 
-# ```
+### Multiple Sensors
 
-# &nbsp;    0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+The script can be extended to support multiple VEML7700 sensors for different zones.
 
-# 00:          -- -- -- -- -- -- -- -- -- -- -- -- -- 
+## 📝 Files Structure
 
-# 10: 10 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+```
+/home/volumio/
+└── backlight_control.py          # Main Python script
 
-# ...
+/etc/systemd/system/
+└── backlight.service              # Systemd service file
 
-# ```
+/etc/lcd_backlight/
+├── lcd_min_backlight              # Minimum brightness value
+├── lcd_max_backlight              # Maximum brightness value
+├── lcd_int_time                   # Measurement interval
+├── lcd_lux_multiplier             # Lux calibration
+└── lcd_smoothing_factor           # Smoothing factor
+```
 
-# 
+## 🤝 Contributing
 
-# \### 7. Python Script Creation
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-# 
+## 📄 License
 
-# Create file `/home/volumio/backlight\_control.py`:
+This project is open-source and available under the MIT License.
 
-# 
+## 👤 Author
 
-# ```bash
+**volumio@volumiorpi**
 
-# nano /home/volumio/backlight\_control.py
+## 📅 Changelog
 
-# ```
+### Version 1.0.0 (November 2025)
+- Initial release
+- VEML7700 sensor support
+- Logarithmic brightness curve
+- Configurable parameters
+- Systemd service integration
 
-# 
+## 🔗 Related Projects
 
-# Copy the content of the provided Python script and set permissions:
+- [Volumio](https://volumio.com/) - Audiophile music player
+- [HiFiBerry](https://www.hifiberry.com/) - High-quality audio for Raspberry Pi
 
-# 
+## 📧 Support
 
-# ```bash
+For questions, issues, or feature requests, please create an issue in this repository.
 
-# chmod +x /home/volumio/backlight\_control.py
+---
 
-# ```
-
-# 
-
-# \### 8. Systemd Service Creation
-
-# 
-
-# Create service file:
-
-# 
-
-# ```bash
-
-# sudo nano /etc/systemd/system/backlight.service
-
-# ```
-
-# 
-
-# Insert the following content:
-
-# 
-
-# ```ini
-
-# \[Unit]
-
-# Description=Backlight Control Service
-
-# After=multi-user.target
-
-# 
-
-# \[Service]
-
-# Type=simple
-
-# ExecStart=/usr/bin/python3 /home/volumio/backlight\_control.py
-
-# WorkingDirectory=/home/volumio
-
-# User=volumio
-
-# Group=volumio
-
-# Restart=always
-
-# RestartSec=5
-
-# 
-
-# \[Install]
-
-# WantedBy=multi-user.target
-
-# ```
-
-# 
-
-# \### 9. Service Activation
-
-# 
-
-# ```bash
-
-# sudo systemctl daemon-reload
-
-# sudo systemctl enable backlight.service
-
-# sudo systemctl start backlight.service
-
-# ```
-
-# 
-
-# \### 10. Service Status Check
-
-# 
-
-# ```bash
-
-# sudo systemctl status backlight.service
-
-# ```
-
-# 
-
-# For real-time log monitoring:
-
-# 
-
-# ```bash
-
-# sudo journalctl -u backlight.service -f
-
-# ```
-
-# 
-
-# \## ⚙️ Configuration
-
-# 
-
-# \### Configuration Files
-
-# 
-
-# The script loads configuration from `/etc/lcd\_backlight/` directory:
-
-# 
-
-# ```bash
-
-# sudo mkdir -p /etc/lcd\_backlight
-
-# ```
-
-# 
-
-# Create the following configuration files:
-
-# 
-
-# \#### Minimum display brightness (0-255):
-
-# ```bash
-
-# echo "12" | sudo tee /etc/lcd\_backlight/lcd\_min\_backlight
-
-# ```
-
-# 
-
-# \#### Maximum display brightness (0-255):
-
-# ```bash
-
-# echo "255" | sudo tee /etc/lcd\_backlight/lcd\_max\_backlight
-
-# ```
-
-# 
-
-# \#### Measurement interval (seconds):
-
-# ```bash
-
-# echo "1" | sudo tee /etc/lcd\_backlight/lcd\_int\_time
-
-# ```
-
-# 
-
-# \#### Lux conversion multiplier:
-
-# ```bash
-
-# echo "0.75" | sudo tee /etc/lcd\_backlight/lcd\_lux\_multiplier
-
-# ```
-
-# 
-
-# \#### Brightness change smoothing factor (0.0-1.0):
-
-# ```bash
-
-# echo "0.3" | sudo tee /etc/lcd\_backlight/lcd\_smoothing\_factor
-
-# ```
-
-# 
-
-# > \*\*Note\*\*: After configuration changes, restart the service: `sudo systemctl restart backlight.service`
-
-# 
-
-# \### Script Parameters
-
-# 
-
-# | Parameter | Value | Description |
-
-# |-----------|-------|-------------|
-
-# | `MIN\_BACKLIGHT` | 12 | Minimum brightness (dark environment) |
-
-# | `MAX\_BACKLIGHT` | 255 | Maximum brightness (bright environment) |
-
-# | `SMOOTHING\_FACTOR` | 0.3 | Transition smoothing (lower = smoother) |
-
-# | `INT\_TIME` | 1 | Measurement interval in seconds |
-
-# | `LUX\_MULTIPLIER` | 0.75 | Calibration coefficient for lux conversion |
-
-# 
-
-# \## 🎯 Usage
-
-# 
-
-# After successful installation, the service starts automatically at boot.
-
-# 
-
-# \### Features
-
-# 
-
-# \- \*\*Automatic brightness control\*\*: Display adapts to ambient lighting
-
-# \- \*\*Logarithmic curve\*\*: Natural perception of brightness changes
-
-# \- \*\*Transition smoothing\*\*: Prevents flickering during light changes
-
-# \- \*\*Persistent configuration\*\*: Settings remain after restart
-
-# 
-
-# \### Manual Service Control
-
-# 
-
-# ```bash
-
-# \# Stop service
-
-# sudo systemctl stop backlight.service
-
-# 
-
-# \# Start service
-
-# sudo systemctl start backlight.service
-
-# 
-
-# \# Restart service
-
-# sudo systemctl restart backlight.service
-
-# 
-
-# \# Disable automatic startup
-
-# sudo systemctl disable backlight.service
-
-# ```
-
-# 
-
-# \## 🔍 Troubleshooting
-
-# 
-
-# \### Sensor Not Detected
-
-# 
-
-# ```bash
-
-# \# Check I2C bus
-
-# i2cdetect -y 1
-
-# 
-
-# \# Check I2C interface in config.txt
-
-# sudo nano /boot/config.txt
-
-# \# Should contain: dtparam=i2c\_arm=on
-
-# ```
-
-# 
-
-# \### Service Won't Start
-
-# 
-
-# ```bash
-
-# \# Check logs
-
-# sudo journalctl -u backlight.service -n 50
-
-# 
-
-# \# Check Python dependencies
-
-# python3 -c "import adafruit\_veml7700; import RPi.GPIO; import smbus"
-
-# ```
-
-# 
-
-# \### Display Doesn't Change Brightness
-
-# 
-
-# ```bash
-
-# \# Check if backlight device exists
-
-# ls -la /sys/class/backlight/\*/brightness
-
-# 
-
-# \# Manual brightness change test
-
-# echo 128 | sudo tee /sys/class/backlight/\*/brightness
-
-# ```
-
-# 
-
-# \### Brightness Changes Too Sensitive
-
-# 
-
-# Increase `SMOOTHING\_FACTOR` value in `/etc/lcd\_backlight/lcd\_smoothing\_factor`:
-
-# 
-
-# ```bash
-
-# echo "0.5" | sudo tee /etc/lcd\_backlight/lcd\_smoothing\_factor
-
-# sudo systemctl restart backlight.service
-
-# ```
-
-# 
-
-# \### Display Too Dark/Bright
-
-# 
-
-# Adjust brightness range:
-
-# 
-
-# ```bash
-
-# \# For darker minimum brightness
-
-# echo "5" | sudo tee /etc/lcd\_backlight/lcd\_min\_backlight
-
-# 
-
-# \# For lower maximum brightness
-
-# echo "200" | sudo tee /etc/lcd\_backlight/lcd\_max\_backlight
-
-# 
-
-# sudo systemctl restart backlight.service
-
-# ```
-
-# 
-
-# \## 📊 Monitoring
-
-# 
-
-# \### Real-time Brightness Monitoring
-
-# 
-
-# ```bash
-
-# \# Monitor logs showing Lux and Brightness values
-
-# sudo journalctl -u backlight.service -f
-
-# ```
-
-# 
-
-# Output displays:        
-
-# '# Uncomment for debug'
-
-# '# if success:'
-
-# '#     print(f"\[{time.strftime('%H:%M:%S')}] Lux: {lux:6.1f} | Brightness: {self.current\_brightness:3d}/{self.max\_backlight}") '
-
-
-
-
-
-# ```
-
-# \[12:34:56] Lux:  245.3 | Brightness: 145/255
-
-# \[12:34:57] Lux:  248.1 | Brightness: 147/255
-
-# ```
-
-# 
-
-# \## 📝 License
-
-# 
-
-# This project is open-source and freely available for personal and commercial use.
-
-# 
-
-# \## 🤝 Support
-
-# 
-
-# For questions and issues, please create an issue in this repository.
-
-# 
-
-# ---
-
-# 
-
-# \*\*Created by\*\*: lubomirkarlik60@gmail.com  
-
-# \*\*Last Updated\*\*: November 2025
-
+**Last Updated**: November 2025  
+**Compatible with**: Volumio 3.x, Raspberry Pi 3B+, Python 3.x
