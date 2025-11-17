@@ -486,7 +486,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
-This project is open-source and available under the GPL-2.0 License.
+This project is open-source and available under the GPL-2.0 License.You may use and modify it freely.  You may use the program as is at your own risk, no updates or modifications to the code will be made, no planed, and no warranties or claims for damages will be made in connection with any use of this code.
 
 ## 👤 Author
 
