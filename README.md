@@ -2,7 +2,7 @@
 
 Automatic brightness control for 7" DPI LCD display using VEML7700 light sensor on Raspberry Pi 3B+ with Volumio.
 
-![GitHub](https://img.shields.io/badge/license-MIT-blue.svg)
+![GitHub](https://img.shields.io/badge/license-GPL%20v2-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.x-blue.svg)
 ![Raspberry Pi](https://img.shields.io/badge/platform-Raspberry%20Pi%203B%2B-red.svg)
 
