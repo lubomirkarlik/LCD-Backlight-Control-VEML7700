@@ -33,14 +33,8 @@ Automatic brightness control for 7" DPI LCD display using VEML7700 light sensor 
 |-----------|------------|-------------|
 | **Main Unit** | Raspberry Pi 3B+ | Control unit |
 | **Display** | 7" LCD DPI (OFI009) | Touch display connected via DPI interface |
-| **Audio** | HiFiBerry AMP2 | Amplifier for speakers |
-| **Enclosure** | Gainta G17083UBK | Protective case |
-| **24V Power Supply** | ZDR1231 | Power supply for amplifier |
-| **5.1V Power Supply** | ZDR577 (adjustable) | Main power supply for RPi |
 | **Encoder** | KY-040 | Rotary encoder for volume control |
 | **Light Sensor** | VEML7700 (BH-014PA) | 16-bit I2C ambient light sensor |
-| **Speaker Connector** | VG09103 | Output connector |
-| **Power Connector** | KAB2423 | With switch and fuse |
 
 ## 💿 Software Requirements
 
