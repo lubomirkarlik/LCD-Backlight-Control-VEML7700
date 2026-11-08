@@ -1,36 +1,34 @@
 #!/bin/bash
+# LCD Backlight Control (VEML7700) - standalone uninstallation
+# Run as root: sudo ./uninstall.sh
 
-echo "Uninstalling LCD Backlight Control programm..."
+SERVICE_NAME="lcd_backlight.service"
 
-# Stop and disable service
-echo "Stopping service..."
-sudo systemctl stop lcd_backlight.service
-sudo systemctl disable lcd_backlight.service
-
-# Remove service file
-echo "Removing systemd service..."
-sudo rm -f /etc/systemd/system/lcd_backlight.service
-
-# Remove Python script
-echo "Removing Python script..."
-sudo rm -f /usr/local/bin/backlight_control.py
-
-# Reload systemd
-echo "Reloading systemd daemon..."
-sudo systemctl daemon-reload
-
-# Remove config files from sysfs (optional - they don't hurt if left)
-# Find backlight path
-BACKLIGHT_PATH=$(ls -d /sys/class/backlight/* 2>/dev/null | head -n1)
-if [ -n "$BACKLIGHT_PATH" ]; then
-    echo "Removing config files from $BACKLIGHT_PATH..."
-    sudo rm -f "$BACKLIGHT_PATH"/lcd_* 2>/dev/null || true
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script must be run as root: sudo $0" >&2
+    exit 1
 fi
 
-# Remove config files
-echo "Removing systemd service..."
-sudo rm -f /etc/lcd_backlight
+echo "Uninstalling LCD Backlight Control..."
 
+# Stop the service (the script restores full brightness on stop) and disable autostart
+echo "Stopping and disabling service..."
+systemctl stop "$SERVICE_NAME" 2>/dev/null || true
+systemctl disable "$SERVICE_NAME" 2>/dev/null || true
+
+echo "Removing systemd service..."
+rm -f "/etc/systemd/system/$SERVICE_NAME"
+
+echo "Reloading systemd daemon..."
+systemctl daemon-reload
+systemctl reset-failed "$SERVICE_NAME" 2>/dev/null || true
+
+echo "Removing Python script..."
+rm -f /usr/local/bin/backlight_control.py
+
+echo "Removing configuration directory /etc/lcd_backlight..."
+rm -rf /etc/lcd_backlight
 
 echo "Uninstallation complete!"
 
+exit 0
