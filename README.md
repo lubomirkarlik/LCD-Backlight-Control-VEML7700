@@ -90,6 +90,22 @@ Pin 6  (GND)     ──────── Pin 4 (GND)
 - **GND**: Ground
 
 > **Note**: Configure encoder pins in Volumio's Rotary Encoder plugin using **BCM** pin numbers.
+> The rotary encoder is not needed for the backlight control.
+
+Example wiring and configuration from the internet radio LK-27 (Volumio, plugin **Rotary Encoder II**):
+
+| KY-040 | Raspberry Pi pin | BCM GPIO | Plugin field |
+|--------|------------------|----------|--------------|
+| CLK    | 33               | 13       | Pin A GPIO |
+| DT     | 31               | 6        | Pin B GPIO |
+| SW     | 23               | 11       | Pushbutton GPIO (Button Logic-Level Active Low: On) |
+| +      | 1 (3.3V)         | –        | – |
+| GND    | 39               | –        | – |
+
+![Rotary Encoder II plugin settings](pict/rotary_encoder2_settings.png)
+
+GPIO 11 is also the SPI clock, so SPI must stay disabled (no `dtparam=spi=on`).
+If the volume changes in the wrong direction, swap Pin A and Pin B in the plugin settings.
 
 ### Display Connection
 
