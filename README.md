@@ -9,6 +9,7 @@ Automatic brightness control for 7" DPI LCD display using VEML7700 light sensor 
 > **⚠️ Using Volumio?** On Volumio the recommended way is the Volumio plugin **`lcd_backlight`**
 > ([volumio-plugins-sources-bookworm](https://github.com/lubomirkarlik/volumio-plugins-sources-bookworm/tree/lcd_backlight/lcd_backlight)).
 > It contains the same control script, adds a settings page in the Volumio web UI and a brightness boost during playback.
+> The plugin is tested on Volumio 3.832 (Volumio 3, buster) and Volumio 4.239 (Volumio 4, bookworm).
 >
 > **Do NOT install the standalone version from this repository and the Volumio plugin together.**
 > Both use the same systemd service name (`lcd_backlight.service`), the same script
@@ -507,7 +508,7 @@ This project is open-source and available under the GPL-2.0 License.You may use 
 ## 📅 Changelog
 
 ### Version 1.2.0 (November 2026)
-- Same control script as the Volumio plugin `lcd_backlight` 1.2.0
+- Same control script as the Volumio plugin `lcd_backlight` 1.2.0 (tested on Volumio 3.832 and Volumio 4.239)
 - Smoothing converges to the target brightness (float smoothing)
 - Brightness is kept on sensor read errors
 - Brightness limited to the device `max_brightness`
